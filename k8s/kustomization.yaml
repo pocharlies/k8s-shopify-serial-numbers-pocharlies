@@ -43,12 +43,16 @@ patches:
                   - secretRef: { name: serial-secrets }
                 volumeMounts:
                   - { name: data, mountPath: /data }
-                readinessProbe:
-                  httpGet:
-                    path: /sn/healthz
-                    port: http
-                  initialDelaySeconds: 10
-                  periodSeconds: 10
+  - target: { group: apps, version: v1, kind: Deployment, name: app }
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/readinessProbe
+        value:
+          httpGet:
+            path: /sn/healthz
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 10
   - target: { group: traefik.io, version: v1alpha1, kind: IngressRoute, name: app }
     patch: |-
       - op: replace

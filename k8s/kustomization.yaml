@@ -49,6 +49,7 @@ patches:
         path: /spec/strategy
         value:
           type: Recreate
+          rollingUpdate: null
       - op: replace
         path: /spec/template/spec/nodeSelector
         value:

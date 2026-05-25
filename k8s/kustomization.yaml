@@ -17,7 +17,7 @@ labels:
 images:
   - name: shopify-app
     newName: harbor.lan.e-dani.com/homelab/skirmshop-serial-numbers
-    newTag: v2026.05.25
+    newTag: v2026.05.25-postgres
 
 patches:
   - target: { kind: Deployment, name: app }
@@ -29,20 +29,18 @@ patches:
       spec:
         template:
           spec:
-            volumes:
-              - name: data
-                persistentVolumeClaim:
-                  claimName: serial-data
             containers:
               - name: app
                 env:
                   - { name: SHOPIFY_APP_URL, value: "https://skirmshop.e-dani.com/sn" }
                   - { name: SCOPES, value: "read_customers,read_products,write_products,read_metaobject_definitions,write_metaobject_definitions,read_metaobjects,write_metaobjects,read_orders,read_all_orders,write_orders" }
-                  - { name: DATABASE_URL, value: "file:/data/dev.sqlite" }
+                  - name: DB_USER
+                    valueFrom: { secretKeyRef: { name: shared-postgres-app, key: username } }
+                  - name: DB_PASSWORD
+                    valueFrom: { secretKeyRef: { name: shared-postgres-app, key: password } }
+                  - { name: DATABASE_URL, value: "postgresql://$(DB_USER):$(DB_PASSWORD)@postgres-shared-rw.databases.svc.cluster.local:5432/serial_numbers" }
                 envFrom:
                   - secretRef: { name: serial-secrets }
-                volumeMounts:
-                  - { name: data, mountPath: /data }
   - target: { group: apps, version: v1, kind: Deployment, name: app }
     patch: |-
       - op: add
@@ -50,15 +48,8 @@ patches:
         value:
           type: RollingUpdate
           rollingUpdate:
-            maxSurge: 0
-            maxUnavailable: 1
-      - op: replace
-        path: /spec/template/spec/nodeSelector
-        value:
-          kubernetes.io/arch: amd64
-      - op: replace
-        path: /spec/template/spec/tolerations
-        value: []
+            maxSurge: 25%
+            maxUnavailable: 25%
       - op: replace
         path: /spec/template/spec/containers/0/readinessProbe
         value:
